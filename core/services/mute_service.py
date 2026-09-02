@@ -80,7 +80,7 @@ class MuteService:
         # 计算时长与消耗
         default_sec = int(config.get("mute_default_duration", 60))
         min_sec = int(config.get("mute_min_duration", 60))
-        max_sec = int(config.get("mute_max_duration", 86400))
+        max_sec = int(config.get("mute_max_duration", 3600))
         allow_custom = config.get("mute_allow_custom_duration", True)
 
         duration_sec = (
