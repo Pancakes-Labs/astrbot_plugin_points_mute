@@ -130,6 +130,42 @@ class MuteEngine:
         return "".join(parts) if parts else "0秒"
 
     @staticmethod
+    def _format_mute_error(err: Exception | str) -> str:
+        """将底层协议端抛出的异常或错误转化为人性化且软萌的中文提示。"""
+        err_str = str(err).lower()
+
+        # 1. 尝试从 ActionFailed 等异常对象中提取属性
+        msg_detail = ""
+        if hasattr(err, "wording") and getattr(err, "wording"):
+            msg_detail = str(getattr(err, "wording")).strip()
+        elif hasattr(err, "message") and getattr(err, "message"):
+            msg_detail = str(getattr(err, "message")).strip()
+
+        # 2. 模式匹配友好提示
+        if "cannot ban owner" in err_str or "ban owner" in err_str or "群主" in err_str:
+            return "群主拥有神圣不可侵犯的豁免权，本喵无法对群主施加禁言封印哦喵~"
+
+        if "cannot ban admin" in err_str or "ban admin" in err_str:
+            return "目标是尊贵的群管理员，本喵无法对其施加禁言封印喵~"
+
+        if (
+            "not admin" in err_str
+            or "need admin" in err_str
+            or "retcode=1200" in err_str
+            or "retcode=1201" in err_str
+        ):
+            return "本喵在群里还不是管理员哦，没有施加禁言的魔法权限喵~ 快给本喵上个管理吧！"
+
+        if "timeout" in err_str or "network" in err_str or "connection" in err_str:
+            return "网络连接波动或协议端超时，禁言指令未能送达喵~"
+
+        # 3. 如果提取到了简洁的 wording/message，使用干净的说明
+        if msg_detail and not msg_detail.startswith("<ActionFailed"):
+            return f"协议端拒绝了禁言请求（{msg_detail}）喵~"
+
+        return "禁言执行受阻（机器人可能权限不足或协议端未开放此接口）喵~"
+
+    @staticmethod
     async def execute_mute(
         event: AstrMessageEvent, target_id: str, duration_sec: int
     ) -> tuple[bool, str]:
@@ -169,7 +205,7 @@ class MuteEngine:
                     return True, "OneBot api.call_action 执行成功"
         except Exception as e:
             logger.warning(f"[MuteEngine] OneBot 禁言执行异常: {e}")
-            return False, f"禁言失败（机器人可能不是管理员或权限不足喵）: {e}"
+            return False, MuteEngine._format_mute_error(e)
 
         # 2. Satori 适配器
         try:
@@ -184,7 +220,7 @@ class MuteEngine:
                     return True, "Satori guild_member_mute 执行成功"
         except Exception as e:
             logger.warning(f"[MuteEngine] Satori 禁言执行异常: {e}")
-            return False, f"Satori 禁言失败: {e}"
+            return False, MuteEngine._format_mute_error(e)
 
         return False, "当前聊天平台或协议端不支持禁言接口喵~"
 
