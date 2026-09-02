@@ -29,8 +29,8 @@ class PluginLifecycleService:
 
         # 2. 初始化 SQLite 数据库与表结构
         await self.db.initialize()
-        logger.info("[积分签到] 模块化插件生命周期初始化就绪喵~")
+        logger.info("[积分禁言] 插件生命周期初始化就绪喵")
 
     async def on_terminate(self) -> None:
         """插件卸载与终止流程。"""
-        logger.info("[积分签到] 插件已安全停用卸载喵~")
+        logger.info("[积分禁言] 插件已安全停用喵")

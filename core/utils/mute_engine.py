@@ -204,7 +204,7 @@ class MuteEngine:
                     )
                     return True, "OneBot api.call_action 执行成功"
         except Exception as e:
-            logger.warning(f"[MuteEngine] OneBot 禁言执行异常: {e}")
+            logger.warning(f"[积分禁言] OneBot 禁言执行异常: {e}")
             return False, MuteEngine._format_mute_error(e)
 
         # 2. Satori 适配器
@@ -219,7 +219,7 @@ class MuteEngine:
                     )
                     return True, "Satori guild_member_mute 执行成功"
         except Exception as e:
-            logger.warning(f"[MuteEngine] Satori 禁言执行异常: {e}")
+            logger.warning(f"[积分禁言] Satori 禁言执行异常: {e}")
             return False, MuteEngine._format_mute_error(e)
 
         return False, "当前聊天平台或协议端不支持禁言接口喵~"

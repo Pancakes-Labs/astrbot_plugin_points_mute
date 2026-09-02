@@ -35,7 +35,7 @@ class SqliteDatabase:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._init_db_sync)
             self._initialized = True
-            logger.info(f"[积分签到] SQLite 数据库初始化成功：{self._db_file}")
+            logger.info(f"[积分禁言] SQLite 数据库初始化成功：{self._db_file}")
 
     def get_connection(self) -> sqlite3.Connection:
         """获取 SQLite 连接并配置 row_factory。"""
