@@ -1,0 +1,22 @@
+name: astrbot_plugin_points_mute
+display_name: 积分签到与群禁言系统
+short_desc: 丰富有趣的签到领积分、运势、积分禁言/自闭/护盾/轮盘赌系统（基于SQLite数据库与群隔离）喵~
+desc: 丰富有趣的 AstrBot 积分经济体系插件！支持每日签到领积分、运势系统、连续签到加成、积分禁言群友、自闭/冷静模式、禁言护盾与反弹、俄罗斯轮盘赌对决、积分转账赠送、SQLite 高性能持久化与群数据隔离，拥有 40+ 项超全可视化配置项喵~
+version: 1.0.0
+author: Aloys23
+repo: https://github.com/Pancakes-Labs/astrbot_plugin_points_mute
+astrbot_version: ">=4.0.0"
+support_platforms:
+  - aiocqhttp
+  - satori
+  - qq_official
+  - telegram
+  - discord
+  - kook
+tags:
+  - points
+  - checkin
+  - mute
+  - economy
+  - game
+  - sqlite

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>积分与禁言控制台</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部状态栏 -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo">🪙</div>
+        <div>
+          <h1 class="title">积分签到与禁言系统控制台</h1>
+          <p class="subtitle">AstrBot Plugin Points Mute Management Dashboard</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="badge-mode" class="badge badge-primary">加载中...</span>
+        <button id="btn-refresh" class="btn btn-secondary">🔄 刷新数据</button>
+      </div>
+    </header>
+
+    <!-- 统计卡片网格 -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <div class="stat-label">总注册用户</div>
+          <div id="stat-total-users" class="stat-val">-</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <div class="stat-label">积分流通总量</div>
+          <div id="stat-points-pool" class="stat-val">-</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-info">
+          <div class="stat-label">今日签到人次</div>
+          <div id="stat-today-checkins" class="stat-val text-success">-</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚔️</div>
+        <div class="stat-info">
+          <div class="stat-label">今日禁言总次数</div>
+          <div id="stat-today-mutes" class="stat-val text-danger">-</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🛡️</div>
+        <div class="stat-info">
+          <div class="stat-label">背包护盾总量</div>
+          <div id="stat-shields-pool" class="stat-val text-primary">-</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 主体选项卡导航 -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-users">👥 用户资产管理</button>
+      <button class="tab-btn" data-tab="tab-config">⚙️ 快捷配置调节</button>
+      <button class="tab-btn" data-tab="tab-help">📖 指令与玩法指南</button>
+    </nav>
+
+    <!-- Tab 1: 用户资产管理 -->
+    <main id="tab-users" class="tab-content active">
+      <div class="filter-bar">
+        <div class="search-box">
+          <input type="text" id="input-search" placeholder="搜索 QQ 号或昵称..." />
+        </div>
+        <div class="select-box">
+          <select id="select-group">
+            <option value="">全部群组 / 全局</option>
+          </select>
+        </div>
+        <div class="select-box">
+          <select id="select-sort">
+            <option value="points:desc">积分从高到低 (富豪)</option>
+            <option value="points:asc">积分从低到高</option>
+            <option value="continuous_checkin_days:desc">连签天数最高 (肝帝)</option>
+            <option value="total_checkin_count:desc">累计签到最多</option>
+            <option value="mute_count_done:desc">禁言他人最多</option>
+            <option value="mute_count_received:desc">被禁言最多</option>
+            <option value="updated_at:desc">最近活跃时间</option>
+          </select>
+        </div>
+        <button id="btn-search" class="btn btn-primary">🔍 查询</button>
+      </div>
+
+      <!-- 用户列表表格 -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>所属群组</th>
+              <th>QQ / 昵称</th>
+              <th>当前积分</th>
+              <th>护盾</th>
+              <th>连签 / 累计</th>
+              <th>今日运势</th>
+              <th>历史总赚 / 消耗</th>
+              <th>最近活跃</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="user-tbody">
+            <tr>
+              <td colspan="9" class="loading-cell">正在加载用户数据喵...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页控制 -->
+      <div class="pagination">
+        <span id="page-info" class="page-text">第 1 / 1 页 (共 0 条)</span>
+        <div class="page-buttons">
+          <button id="btn-prev-page" class="btn btn-sm btn-secondary" disabled>上一页</button>
+          <button id="btn-next-page" class="btn btn-sm btn-secondary" disabled>下一页</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Tab 2: 快捷配置调节 -->
+    <section id="tab-config" class="tab-content">
+      <div class="config-card">
+        <h2 class="section-title">⚙️ 核心运行配置</h2>
+        <p class="section-desc">修改后点击下方保存按钮，配置将立即写入 AstrBot 配置文件并实时生效喵~</p>
+
+        <form id="form-config" class="config-grid">
+          <div class="form-group">
+            <label>群数据隔离模式</label>
+            <select name="points_isolation_mode" id="cfg-isolation">
+              <option value="group_isolated">群隔离模式（各群独立资产与榜单）</option>
+              <option value="global_shared">不隔离模式（全群打通共享资产）</option>
+            </select>
+            <small>群隔离下每个群独立计算，不隔离下跨群共享同一份积分资产。</small>
+          </div>
+
+          <div class="form-group">
+            <label>货币名称</label>
+            <input type="text" name="currency_name" id="cfg-curr-name" required />
+            <small>如：喵币、积分、金币、活跃度</small>
+          </div>
+
+          <div class="form-group">
+            <label>新用户启动资金</label>
+            <input type="number" name="initial_points" id="cfg-init-pts" min="0" />
+            <small>首次使用本插件赠送的初始积分</small>
+          </div>
+
+          <div class="form-group">
+            <label>每日签到随机最低积分</label>
+            <input type="number" name="checkin_min_points" id="cfg-min-pts" min="1" />
+          </div>
+
+          <div class="form-group">
+            <label>每日签到随机最高积分</label>
+            <input type="number" name="checkin_max_points" id="cfg-max-pts" min="1" />
+          </div>
+
+          <div class="form-group">
+            <label>连续签到每天加成积分</label>
+            <input type="number" name="checkin_streak_bonus_per_day" id="cfg-streak-bonus" min="0" />
+          </div>
+
+          <div class="form-group">
+            <label>禁言费率 (积分/每分钟)</label>
+            <input type="number" name="mute_cost_per_minute" id="cfg-mute-cost" min="1" />
+          </div>
+
+          <div class="form-group">
+            <label>禁言单次默认时长 (秒)</label>
+            <input type="number" name="mute_default_duration" id="cfg-mute-default" min="60" step="60" />
+          </div>
+
+          <div class="form-group">
+            <label>护盾单价 (积分/张)</label>
+            <input type="number" name="shield_price" id="cfg-shield-price" min="1" />
+          </div>
+
+          <div class="form-group">
+            <label>单人背包护盾持有上限</label>
+            <input type="number" name="shield_max_hold" id="cfg-shield-max" min="1" max="10" />
+          </div>
+
+          <div class="form-group">
+            <label>单人每日发起禁言次数上限</label>
+            <input type="number" name="daily_user_mute_limit" id="cfg-daily-mute" min="0" />
+            <small>0 为不限制</small>
+          </div>
+
+          <div class="form-group">
+            <label>单人每日被禁言上限 (防集火保护)</label>
+            <input type="number" name="daily_user_muted_limit" id="cfg-daily-muted" min="0" />
+            <small>达到后今日免疫所有禁言</small>
+          </div>
+        </form>
+
+        <div class="form-actions">
+          <button id="btn-save-config" class="btn btn-primary btn-lg">💾 保存全部配置</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: 指令与说明指南 -->
+    <section id="tab-help" class="tab-content">
+      <div class="help-card">
+        <h2 class="section-title">📖 插件常用指令与玩法速查</h2>
+        <div class="help-grid">
+          <div class="help-item">
+            <h3>🪙 积分获取</h3>
+            <p><code>签到</code> / <code>/checkin</code>：每日打卡，附赠今日运势与连签/首签加成。</p>
+            <p><code>查积分</code> / <code>/points</code>：查询个人资产卡片与护盾库存。</p>
+            <p><code>积分榜</code> / <code>/points_rank</code>：查看群内或全局富豪排行榜。</p>
+          </div>
+          <div class="help-item">
+            <h3>⚔️ 禁言与封印</h3>
+            <p><code>/禁言 @群友 [时长]</code>：消耗积分对其施加禁言封印。</p>
+            <p><code>自闭 [时长]</code> / <code>/selfmute</code>：自我禁言冷静，享受半价优惠。</p>
+            <p><code>/解禁 @群友</code> / <code>/unmute</code>：花费积分提前解除禁言。</p>
+            <p><code>/轮盘赌 @群友 [赌注]</code>：50% 胜率对赌禁言决斗。</p>
+          </div>
+          <div class="help-item">
+            <h3>🛡️ 道具与转账</h3>
+            <p><code>买护盾 [数量]</code> / <code>/buy_shield</code>：购买禁言护盾抵挡封印并概率反弹。</p>
+            <p><code>我的护盾</code> / <code>/my_shield</code>：查看持有的护盾数量。</p>
+            <p><code>/转账 @群友 数量</code>：向好友赠送积分。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 管理员操作弹窗 Modal -->
+    <div id="modal-modify" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-title">🛠️ 管理员操作</h3>
+          <button id="modal-close" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="modal-user-desc" class="modal-user-info"></p>
+          
+          <div class="form-group">
+            <label>选择操作类型</label>
+            <select id="modal-action">
+              <option value="add_points">➕ 充值/增加积分</option>
+              <option value="sub_points">➖ 扣除积分</option>
+              <option value="set_points">🎯 直接设定积分</option>
+              <option value="set_shields">🛡️ 设置护盾数量</option>
+              <option value="set_streak">🔥 设置连续签到天数</option>
+              <option value="reset_checkin">🔄 重置今日签到状态 (允许再次签到)</option>
+            </select>
+          </div>
+
+          <div id="modal-value-group" class="form-group">
+            <label id="modal-value-label">数值 / 数量</label>
+            <input type="number" id="modal-value" min="0" value="100" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="modal-cancel" class="btn btn-secondary">取消</button>
+          <button id="modal-submit" class="btn btn-primary">确认执行</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全局 Toast 提示 -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

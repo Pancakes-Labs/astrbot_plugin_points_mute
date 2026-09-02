@@ -1,0 +1,368 @@
+{
+  "enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "插件总开关",
+    "hint": "开启或关闭整个签到积分禁言插件喵~"
+  },
+  "currency_name": {
+    "type": "string",
+    "default": "喵币",
+    "description": "积分货币名称",
+    "hint": "例如：积分、喵币、金币、活跃度、星星等"
+  },
+  "currency_unit": {
+    "type": "string",
+    "default": "个",
+    "description": "积分货币单位",
+    "hint": "例如：点、个、枚、颗等"
+  },
+  "points_isolation_mode": {
+    "type": "string",
+    "default": "group_isolated",
+    "description": "群数据隔离模式",
+    "options": [
+      "group_isolated",
+      "global_shared"
+    ],
+    "labels": [
+      "群隔离模式（各群独立资产与榜单）",
+      "不隔离模式（全群打通共享资产）"
+    ],
+    "hint": "【群隔离模式】：每个群各自独立拥有积分资产、连续签到和排行榜，根据 QQ 号在各个群分别计算；【不隔离模式】：所有群与私聊共享同一份积分资产与背包道具。"
+  },
+  "allow_private_checkin": {
+    "type": "bool",
+    "default": true,
+    "description": "允许私聊签到",
+    "hint": "开启后支持私聊发送签到指令"
+  },
+  "allow_no_prefix": {
+    "type": "bool",
+    "default": true,
+    "description": "允许无斜杠前缀指令",
+    "hint": "开启后，直接发送“签到”、“查积分”、“禁言 @某人”等也能触发"
+  },
+  "show_sender_at": {
+    "type": "bool",
+    "default": true,
+    "description": "指令回复时 @ 发送者",
+    "hint": "在群聊中回复时是否提及发送者"
+  },
+  "initial_points": {
+    "type": "int",
+    "default": 0,
+    "description": "新用户初始赠送积分",
+    "hint": "新用户首次签到或查询时赠送的基础启动资金"
+  },
+  "whitelist_groups": {
+    "type": "list",
+    "default": [],
+    "description": "群聊白名单列表",
+    "hint": "只在指定的群号中启用本插件（留空表示所有群均可使用喵~）"
+  },
+  "blacklist_groups": {
+    "type": "list",
+    "default": [],
+    "description": "群聊黑名单列表",
+    "hint": "在指定的群号中禁用本插件"
+  },
+  "blacklist_users": {
+    "type": "list",
+    "default": [],
+    "description": "用户黑名单列表",
+    "hint": "禁止指定用户使用积分、签到与禁言功能"
+  },
+  "admin_bypass_cost": {
+    "type": "bool",
+    "default": false,
+    "description": "管理员免消耗积分",
+    "hint": "群管理员或机器人管理员使用禁言等功能时是否免扣积分"
+  },
+  "checkin_min_points": {
+    "type": "int",
+    "default": 10,
+    "description": "签到基础积分下限",
+    "hint": "每次签到随机获得的最少基础积分"
+  },
+  "checkin_max_points": {
+    "type": "int",
+    "default": 50,
+    "description": "签到基础积分上限",
+    "hint": "每次签到随机获得的最大基础积分"
+  },
+  "checkin_streak_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用连续签到递增奖励",
+    "hint": "连续签到天数越多，获得的额外加成积分越多"
+  },
+  "checkin_streak_bonus_per_day": {
+    "type": "int",
+    "default": 3,
+    "description": "连续签到每日额外加成积分",
+    "hint": "例如设置为3，连续签到2天额外+3，3天+6，以此类推"
+  },
+  "checkin_streak_max_bonus": {
+    "type": "int",
+    "default": 60,
+    "description": "连续签到额外加成上限",
+    "hint": "连续签到额外积分的最大封顶值"
+  },
+  "checkin_first_bonus": {
+    "type": "int",
+    "default": 20,
+    "description": "每日群内首签额外奖励（状元）",
+    "hint": "当天群内第1个签到的成员额外获得的奖励积分"
+  },
+  "checkin_second_bonus": {
+    "type": "int",
+    "default": 10,
+    "description": "每日群内第2名签到额外奖励（榜眼）",
+    "hint": "当天群内第2个签到的成员额外获得的奖励积分"
+  },
+  "checkin_third_bonus": {
+    "type": "int",
+    "default": 5,
+    "description": "每日群内第3名签到额外奖励（探花）",
+    "hint": "当天群内第3个签到的成员额外获得的奖励积分"
+  },
+  "checkin_luck_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用每日运势系统",
+    "hint": "签到时随机附赠今日运势（大吉、中吉、小吉、平、小凶、大凶等）与吉凶签语"
+  },
+  "checkin_luck_affects_points": {
+    "type": "bool",
+    "default": true,
+    "description": "运势影响签到积分倍率",
+    "hint": "如大吉额外+20%积分，小凶-10%等，增加签到趣味性"
+  },
+  "checkin_reset_hour": {
+    "type": "int",
+    "default": 0,
+    "description": "每日签到重置小时数(0-23)",
+    "hint": "0 表示每天午夜 00:00 刷新签到资格"
+  },
+  "mute_cost_per_minute": {
+    "type": "int",
+    "default": 5,
+    "description": "禁言每分钟消耗积分",
+    "hint": "例如设置为5，禁言10分钟需要消耗 50 积分"
+  },
+  "mute_default_duration": {
+    "type": "int",
+    "default": 60,
+    "description": "默认禁言时长（秒）",
+    "hint": "未指定禁言时长时的默认秒数（如 60 即 1 分钟）"
+  },
+  "mute_min_duration": {
+    "type": "int",
+    "default": 60,
+    "description": "单次最短禁言时长（秒）",
+    "hint": "单次允许指定的最小秒数（如 60 秒）"
+  },
+  "mute_max_duration": {
+    "type": "int",
+    "default": 86400,
+    "description": "单次最长禁言时长（秒）",
+    "hint": "单次允许指定的最大秒数（86400 为 24 小时，最大 2591999 即 29 天 23 小时）"
+  },
+  "mute_allow_custom_duration": {
+    "type": "bool",
+    "default": true,
+    "description": "允许自定义禁言时长",
+    "hint": "允许用户在指令中指定如 /禁言 @某人 5分钟"
+  },
+  "daily_user_mute_limit": {
+    "type": "int",
+    "default": 5,
+    "description": "单人每日发起禁言次数上限",
+    "hint": "每位用户每天最多对他人施加禁言的次数，0 表示无限制喵~"
+  },
+  "daily_user_muted_limit": {
+    "type": "int",
+    "default": 5,
+    "description": "单人每日被禁言次数上限（防集火保护）",
+    "hint": "每位用户每天最多被他人禁言的次数，达到上限后今日免疫禁言，0 表示无限制喵~"
+  },
+  "daily_user_muted_max_duration": {
+    "type": "int",
+    "default": 7200,
+    "description": "单人每日累计被禁言时长上限（秒）",
+    "hint": "每位用户每天累计被禁言的最大秒数（如 7200 为 2 小时），达到后今日无法再被禁言，0 表示无限制喵~"
+  },
+  "group_daily_mute_total_limit": {
+    "type": "int",
+    "default": 50,
+    "description": "全群每日禁言总次数上限",
+    "hint": "整个群每天最多执行的积分禁言总次数，防止刷屏混乱，0 表示无限制喵~"
+  },
+  "mute_refund_on_fail": {
+    "type": "bool",
+    "default": true,
+    "description": "禁言失败时退还积分",
+    "hint": "若机器人因权限不足（非群管理）或网络异常禁言失败，自动全额退还所扣积分"
+  },
+  "mute_admin_allowed": {
+    "type": "bool",
+    "default": false,
+    "description": "允许普通成员禁言管理员/群主",
+    "hint": "开启后需机器人为群主才可能成功，且消耗更高倍率积分"
+  },
+  "mute_admin_multiplier": {
+    "type": "float",
+    "default": 5.0,
+    "description": "禁言管理员积分消耗倍率",
+    "hint": "如果开启了允许禁言管理员，所需消耗的基础积分倍数"
+  },
+  "mute_bot_defense": {
+    "type": "bool",
+    "default": true,
+    "description": "机器人防卫反噬",
+    "hint": "当有用户企图使用积分禁言机器人时，自动反弹禁言该用户并没收积分"
+  },
+  "mute_bot_defense_duration": {
+    "type": "int",
+    "default": 180,
+    "description": "反噬禁言时长（秒）",
+    "hint": "企图禁言机器人时被反弹禁言的秒数（默认 3 分钟）"
+  },
+  "self_mute_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用自闭/冷静模式（自我禁言）",
+    "hint": "用户可通过 /自闭 指令对自己施加禁言"
+  },
+  "self_mute_discount": {
+    "type": "float",
+    "default": 0.5,
+    "description": "自闭模式积分折扣",
+    "hint": "自我禁言时的费用折扣（0.5 表示半价）"
+  },
+  "self_mute_max_duration": {
+    "type": "int",
+    "default": 86400,
+    "description": "自闭模式单次最长禁言时长（秒）",
+    "hint": "自我禁言单次允许指定的最大秒数（默认 86400 即 24 小时）"
+  },
+  "unmute_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用积分赎身解禁功能",
+    "hint": "允许消耗积分提前解除某人的禁言"
+  },
+  "unmute_cost": {
+    "type": "int",
+    "default": 50,
+    "description": "赎身解禁消耗积分",
+    "hint": "解除一次禁言所需消耗的固定积分数"
+  },
+  "shield_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用禁言护盾系统",
+    "hint": "允许用户购买护盾，被禁言时自动抵挡并消耗一层护盾"
+  },
+  "shield_price": {
+    "type": "int",
+    "default": 80,
+    "description": "单张护盾购买价格（积分）",
+    "hint": "购买一个禁言护盾道具所需消耗的积分"
+  },
+  "shield_max_hold": {
+    "type": "int",
+    "default": 3,
+    "description": "单人最多持有护盾数量",
+    "hint": "每位用户背包中最多可囤积的护盾张数"
+  },
+  "shield_reflect_chance": {
+    "type": "float",
+    "default": 0.3,
+    "description": "护盾反弹禁言概率(0.0-1.0)",
+    "hint": "护盾生效抵挡时，有一定概率将禁言反弹给施术者（0.3 表示 30% 概率）"
+  },
+  "roulette_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用禁言轮盘赌小游戏",
+    "hint": "两人对赌禁言，50%概率禁言对方，50%概率反噬禁言自己"
+  },
+  "roulette_min_bet": {
+    "type": "int",
+    "default": 10,
+    "description": "轮盘赌最低下注积分",
+    "hint": "参与禁言轮盘赌单次最少下注的积分"
+  },
+  "roulette_max_bet": {
+    "type": "int",
+    "default": 200,
+    "description": "轮盘赌最高下注积分",
+    "hint": "参与禁言轮盘赌单次最多下注的积分"
+  },
+  "roulette_win_rate": {
+    "type": "float",
+    "default": 0.5,
+    "description": "发起者轮盘胜率(0.1-0.9)",
+    "hint": "发起轮盘赌挑战者的胜率（默认 0.5 即 50%）"
+  },
+  "roulette_base_duration": {
+    "type": "int",
+    "default": 60,
+    "description": "轮盘赌输家基础禁言时长（秒）",
+    "hint": "轮盘赌失败方被禁言的基础时长"
+  },
+  "transfer_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "启用积分转账/赠送功能",
+    "hint": "允许群友之间互相赠送或转账积分"
+  },
+  "transfer_min_amount": {
+    "type": "int",
+    "default": 10,
+    "description": "单次最低转账积分",
+    "hint": "转账单笔最低额度"
+  },
+  "transfer_fee_rate": {
+    "type": "float",
+    "default": 0.05,
+    "description": "转账手续费率(0.0-0.5)",
+    "hint": "转账时系统回收的手续费比例（如 0.05 表示 5% 手续费）"
+  },
+  "rank_page_size": {
+    "type": "int",
+    "default": 10,
+    "description": "排行榜展示人数",
+    "hint": "积分榜、签到榜单页显示排名前几位的用户"
+  },
+  "rank_scope": {
+    "type": "string",
+    "default": "group",
+    "description": "排行榜统计范围",
+    "options": [
+      "group",
+      "global"
+    ],
+    "hint": "group 为当前群内排行榜，global 为全局所有用户排行榜"
+  },
+  "custom_checkin_title": {
+    "type": "string",
+    "default": "✨ 签到成功 ✨",
+    "description": "签到成功标题文案",
+    "hint": "签到反馈消息的头部展示标题"
+  },
+  "custom_mute_success_msg": {
+    "type": "string",
+    "default": "🎯 成功对 {target} 施加了 {duration} 的禁言封印！",
+    "description": "禁言成功文案模板",
+    "hint": "可用变量：{sender}, {target}, {duration}, {cost}, {currency}"
+  },
+  "custom_shield_broken_msg": {
+    "type": "string",
+    "default": "🛡️ 嗡！{target} 身上爆发出一道金光，禁言护盾生效并抵挡了本次禁言！",
+    "description": "护盾生效文案模板",
+    "hint": "可用变量：{target}, {sender}"
+  }
+}

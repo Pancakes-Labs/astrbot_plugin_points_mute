@@ -1,0 +1,2 @@
+# astrbot_plugin_points_mute dependencies
+aiofiles>=23.2.0
