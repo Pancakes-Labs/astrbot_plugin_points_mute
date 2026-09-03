@@ -6,7 +6,7 @@ import re
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At
+from astrbot.api.message_components import At, Plain
 
 
 class MuteEngine:
@@ -61,25 +61,115 @@ class MuteEngine:
         return None
 
     @staticmethod
+    def get_bot_ids(event: AstrMessageEvent) -> set[str]:
+        """获取当前机器人自身的所有可能 ID 集合。"""
+        bot_ids: set[str] = set()
+
+        if hasattr(event, "get_self_id"):
+            try:
+                sid = event.get_self_id()
+                if sid:
+                    bot_ids.add(str(sid).strip())
+            except Exception:
+                pass
+
+        if hasattr(event, "message_obj") and hasattr(event.message_obj, "self_id"):
+            sid = event.message_obj.self_id
+            if sid:
+                bot_ids.add(str(sid).strip())
+
+        if hasattr(event, "bot") and event.bot:
+            bot = event.bot
+            for attr in ("self_id", "id", "uin", "user_id"):
+                val = getattr(bot, attr, None)
+                if val:
+                    bot_ids.add(str(val).strip())
+
+        if hasattr(event, "message_obj") and hasattr(event.message_obj, "raw_message"):
+            raw = event.message_obj.raw_message
+            if isinstance(raw, dict):
+                sid = raw.get("self_id")
+                if sid:
+                    bot_ids.add(str(sid).strip())
+            elif hasattr(raw, "self_id"):
+                sid = getattr(raw, "self_id", None)
+                if sid:
+                    bot_ids.add(str(sid).strip())
+
+        return {b for b in bot_ids if b}
+
+    @staticmethod
     def extract_target_and_params(
         event: AstrMessageEvent,
+        is_time: bool = True,
     ) -> tuple[str | None, int | None]:
-        """从事件中提取被 @ 的目标 QQ 号以及附带的时间/数值参数。"""
+        """从事件中提取被 @ 的目标 QQ 号以及附带的时间/数值参数。
+
+        当用户使用 @机器人 唤醒机器人（而非使用唤醒词）时，消息开头的 @机器人 仅作为唤醒前缀，
+        不会被误当作禁言/操作目标。
+        """
         target_id: str | None = None
         param_value: int | None = None
+        bot_ids = MuteEngine.get_bot_ids(event)
 
         # 1. 遍历消息链提取 At 组件
-        if hasattr(event, "message_obj") and hasattr(event.message_obj, "message"):
-            for comp in event.message_obj.message:
-                if isinstance(comp, At):
-                    if hasattr(comp, "qq") and comp.qq:
-                        target_id = str(comp.qq).strip()
-                        break
-                    elif hasattr(comp, "target") and comp.target:
-                        target_id = str(comp.target).strip()
-                        break
+        at_targets: list[str] = []
+        is_first_comp_bot_at = False
 
-        # 2. 解析纯文本内容中的参数
+        if hasattr(event, "message_obj") and hasattr(event.message_obj, "message"):
+            msg_list = event.message_obj.message or []
+
+            # 检查消息首个非空组件是否为 At 机器人自身（即是否使用 At 唤醒机器人）
+            for comp in msg_list:
+                if isinstance(comp, Plain) or comp.__class__.__name__ == "Plain":
+                    text = getattr(comp, "text", "")
+                    if not text or not text.strip():
+                        continue
+                    # 遇到非空白纯文本，说明开头不是 At
+                    break
+
+                if isinstance(comp, At) or comp.__class__.__name__ == "At":
+                    c_target = (
+                        getattr(comp, "qq", None)
+                        or getattr(comp, "target", None)
+                        or getattr(comp, "user_id", None)
+                    )
+                    if c_target is not None and str(c_target).strip() in bot_ids:
+                        is_first_comp_bot_at = True
+                    break
+
+                # 遇到其他组件跳出开头检查
+                break
+
+            # 收集所有非 AtAll 的 At 组件
+            for comp in msg_list:
+                if isinstance(comp, At) or comp.__class__.__name__ == "At":
+                    c_target = (
+                        getattr(comp, "qq", None)
+                        or getattr(comp, "target", None)
+                        or getattr(comp, "user_id", None)
+                    )
+                    if c_target is not None:
+                        c_str = str(c_target).strip()
+                        if c_str and c_str.lower() != "all":
+                            at_targets.append(c_str)
+
+        # 决定待选目标列表：
+        # 如果首个组件是 At 机器人自身，则该 At 属于唤醒前缀，予以消耗
+        if is_first_comp_bot_at and at_targets and at_targets[0] in bot_ids:
+            candidate_ats = at_targets[1:]
+        else:
+            candidate_ats = at_targets
+
+        # 优先提取非机器人自身的 At
+        other_ats = [t for t in candidate_ats if t not in bot_ids]
+        if other_ats:
+            target_id = other_ats[0]
+        elif candidate_ats:
+            # 只有当用户显式传递了第二个 At（例如 @机器人 禁言 @机器人），或通过前缀指令显式指定 @机器人 时，才将机器人作为目标
+            target_id = candidate_ats[0]
+
+        # 2. 解析纯文本内容中的参数及备用目标
         msg_str = (event.message_str or "").strip()
         tokens = msg_str.split()
 
@@ -89,15 +179,26 @@ class MuteEngine:
                 continue
 
             if not target_id and token.startswith("@"):
-                raw_at = token.lstrip("@").strip()
-                if raw_at.isdigit():
-                    target_id = raw_at
+                # 兼容文本形式的 @123456 或 @昵称(123456)
+                m = re.match(r"^@.*?(?:[(（](\d+)[)）]|(\d+))$", token)
+                cand_raw = (
+                    (m.group(1) or m.group(2))
+                    if m
+                    else token.lstrip("@").strip()
+                )
+                if cand_raw.isdigit() and cand_raw not in bot_ids:
+                    target_id = cand_raw
                     continue
 
-            parsed_sec = MuteEngine.parse_time_to_seconds(token)
-            if parsed_sec is not None and param_value is None:
-                param_value = parsed_sec
-                continue
+            if is_time:
+                parsed_sec = MuteEngine.parse_time_to_seconds(token)
+                if parsed_sec is not None and param_value is None:
+                    param_value = parsed_sec
+                    continue
+            else:
+                if token.isdigit() and param_value is None:
+                    param_value = int(token)
+                    continue
 
             if token.isdigit() and param_value is None:
                 param_value = int(token)

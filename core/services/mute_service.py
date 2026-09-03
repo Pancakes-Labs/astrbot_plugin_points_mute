@@ -42,8 +42,8 @@ class MuteService:
             return
 
         # 检查是否试图禁言机器人自身 (神罚防卫反噬)
-        bot_id = str(event.get_self_id() or "")
-        if target_id == bot_id:
+        bot_ids = MuteEngine.get_bot_ids(event)
+        if target_id in bot_ids:
             if config.get("mute_bot_defense", True):
                 defense_sec = int(config.get("mute_bot_defense_duration", 180))
                 penalty = int(config.get("mute_cost_per_minute", 5)) * (

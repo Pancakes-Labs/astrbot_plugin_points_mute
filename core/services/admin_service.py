@@ -74,7 +74,9 @@ class AdminService:
         """加积分指令。"""
         group_id = event.get_group_id()
         curr_name = config.get("currency_name", "喵币")
-        target_id, parsed_val = MuteEngine.extract_target_and_params(event)
+        target_id, parsed_val = MuteEngine.extract_target_and_params(
+            event, is_time=False
+        )
         if not target_id or not parsed_val:
             yield MessageHelper.reply(event, "格式：/加积分 @某人 数量", config)
             return
@@ -92,7 +94,9 @@ class AdminService:
         """扣积分指令。"""
         group_id = event.get_group_id()
         curr_name = config.get("currency_name", "喵币")
-        target_id, parsed_val = MuteEngine.extract_target_and_params(event)
+        target_id, parsed_val = MuteEngine.extract_target_and_params(
+            event, is_time=False
+        )
         if not target_id or not parsed_val:
             yield MessageHelper.reply(event, "格式：/扣积分 @某人 数量", config)
             return
@@ -113,7 +117,9 @@ class AdminService:
         """设积分指令。"""
         group_id = event.get_group_id()
         curr_name = config.get("currency_name", "喵币")
-        target_id, parsed_val = MuteEngine.extract_target_and_params(event)
+        target_id, parsed_val = MuteEngine.extract_target_and_params(
+            event, is_time=False
+        )
         if not target_id or parsed_val is None:
             yield MessageHelper.reply(event, "格式：/设积分 @某人 数量", config)
             return

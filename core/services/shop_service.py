@@ -96,7 +96,9 @@ class ShopService:
         sender_id = event.get_sender_id()
         group_id = event.get_group_id()
         curr_name = config.get("currency_name", "喵币")
-        target_id, parsed_amount = MuteEngine.extract_target_and_params(event)
+        target_id, parsed_amount = MuteEngine.extract_target_and_params(
+            event, is_time=False
+        )
 
         if not target_id or not parsed_amount:
             yield MessageHelper.reply(
