@@ -63,7 +63,7 @@ class PluginWebService:
             )
             return json_response(stats)
         except Exception as e:
-            logger.error(f"[积分签到] api_stats 错误: {e}")
+            logger.error(f"[积分禁言] api_stats 错误: {e}")
             return error_response(f"获取统计失败: {e}", status_code=500)
 
     async def api_users(self):
@@ -86,7 +86,7 @@ class PluginWebService:
             )
             return json_response(res)
         except Exception as e:
-            logger.error(f"[积分签到] api_users 错误: {e}")
+            logger.error(f"[积分禁言] api_users 错误: {e}")
             return error_response(f"查询用户失败: {e}", status_code=500)
 
     async def api_user_modify(self):
@@ -110,7 +110,7 @@ class PluginWebService:
                 return error_response(res.get("msg", "操作失败"), status_code=400)
             return json_response(res)
         except Exception as e:
-            logger.error(f"[积分签到] api_user_modify 错误: {e}")
+            logger.error(f"[积分禁言] api_user_modify 错误: {e}")
             return error_response(f"修改失败: {e}", status_code=500)
 
     async def api_groups(self):
@@ -119,7 +119,7 @@ class PluginWebService:
             groups = await self.repo.get_all_active_groups()
             return json_response({"groups": groups})
         except Exception as e:
-            logger.error(f"[积分签到] api_groups 错误: {e}")
+            logger.error(f"[积分禁言] api_groups 错误: {e}")
             return error_response(f"获取群组列表失败: {e}", status_code=500)
 
     async def api_get_config(self):
@@ -171,5 +171,5 @@ class PluginWebService:
                 {"success": True, "msg": "配置已成功保存并实时生效喵~"}
             )
         except Exception as e:
-            logger.error(f"[积分签到] api_save_config 错误: {e}")
+            logger.error(f"[积分禁言] api_save_config 错误: {e}")
             return error_response(f"保存配置失败: {e}", status_code=500)
