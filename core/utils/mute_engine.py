@@ -182,9 +182,7 @@ class MuteEngine:
                 # 兼容文本形式的 @123456 或 @昵称(123456)
                 m = re.match(r"^@.*?(?:[(（](\d+)[)）]|(\d+))$", token)
                 cand_raw = (
-                    (m.group(1) or m.group(2))
-                    if m
-                    else token.lstrip("@").strip()
+                    (m.group(1) or m.group(2)) if m else token.lstrip("@").strip()
                 )
                 if cand_raw.isdigit() and cand_raw not in bot_ids:
                     target_id = cand_raw

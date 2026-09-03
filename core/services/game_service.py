@@ -29,9 +29,7 @@ class GameService:
 
         sender_id = event.get_sender_id()
         curr_name = config.get("currency_name", "喵币")
-        target_id, bet_val = MuteEngine.extract_target_and_params(
-            event, is_time=False
-        )
+        target_id, bet_val = MuteEngine.extract_target_and_params(event, is_time=False)
 
         if not target_id or target_id == sender_id:
             yield MessageHelper.reply(
