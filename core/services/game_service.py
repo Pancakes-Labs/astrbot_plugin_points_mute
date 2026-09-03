@@ -55,6 +55,27 @@ class GameService:
             )
             return
 
+        # 权限前置检查：检查机器人是否具备禁言管理权限
+        can_mute_bot, perm_err = await MuteEngine.check_mute_permission(
+            event, config=config
+        )
+        if not can_mute_bot:
+            yield MessageHelper.reply(
+                event, f"轮盘赌决斗无法开盘喵：\n{perm_err}", config
+            )
+            return
+
+        # 检查决斗双方是否能被禁言（例如不能是群主）
+        for p_id, p_desc in [(sender_id, "发起者"), (target_id, "迎战者")]:
+            can_p, p_err = await MuteEngine.check_mute_permission(
+                event, target_id=p_id, config=config
+            )
+            if not can_p:
+                yield MessageHelper.reply(
+                    event, f"轮盘决斗双方中{p_desc}无法被禁言喵：\n{p_err}", config
+                )
+                return
+
         win_rate = float(config.get("roulette_win_rate", 0.5))
         base_dur = int(config.get("roulette_base_duration", 60))
         punish_sec = base_dur + (bet // 2)

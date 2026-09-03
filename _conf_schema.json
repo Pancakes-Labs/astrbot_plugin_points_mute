@@ -199,6 +199,12 @@
     "description": "全群每日禁言总次数上限",
     "hint": "整个群每天最多执行的积分禁言总次数，防止刷屏混乱，0 表示无限制喵~"
   },
+  "mute_check_permission": {
+    "type": "bool",
+    "default": true,
+    "description": "禁言前检查机器人禁言权限",
+    "hint": "在尝试执行禁言前，预先检查机器人自身是否拥有管理权限及目标是否可被禁言，避免误扣积分喵~"
+  },
   "mute_refund_on_fail": {
     "type": "bool",
     "default": true,

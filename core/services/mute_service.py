@@ -52,7 +52,15 @@ class MuteService:
                 await self.repo.deduct_points(
                     sender_id, penalty, group_id=group_id, config=config
                 )
-                ok, _ = await MuteEngine.execute_mute(event, sender_id, defense_sec)
+                # 检查反噬禁言施术者权限
+                can_defend, _ = await MuteEngine.check_mute_permission(
+                    event, target_id=sender_id, config=config
+                )
+                ok = False
+                if can_defend:
+                    ok, _ = await MuteEngine.execute_mute(
+                        event, sender_id, defense_sec
+                    )
                 dur_str = MuteEngine.format_duration(defense_sec)
                 if ok:
                     yield MessageHelper.reply(
@@ -63,7 +71,7 @@ class MuteService:
                 else:
                     yield MessageHelper.reply(
                         event,
-                        f"⚡ 竟敢试图禁言本喵！虽然反噬被神秘力量阻挡，但已没收你 {penalty} {curr_name} 喵！",
+                        f"⚡ 竟敢试图禁言本喵！虽然本喵暂无管理权限反弹禁言，但已没收你 {penalty} {curr_name} 罚金喵！",
                         config,
                     )
                 return
@@ -75,6 +83,14 @@ class MuteService:
         if target_id == sender_id:
             async for r in self.handle_self_mute_command(event, parsed_sec, config):
                 yield r
+            return
+
+        # 权限前置检查：检查机器人是否具备禁言管理权限以及目标是否可被禁言
+        can_mute, perm_err = await MuteEngine.check_mute_permission(
+            event, target_id=target_id, config=config
+        )
+        if not can_mute:
+            yield MessageHelper.reply(event, perm_err, config)
             return
 
         # 计算时长与消耗
@@ -91,6 +107,12 @@ class MuteService:
         cost_per_min = int(config.get("mute_cost_per_minute", 5))
         minutes = math.ceil(duration_sec / 60)
         total_cost = max(1, minutes * cost_per_min)
+
+        # 目标是管理员时的倍率结算
+        target_role = await MuteEngine.get_member_role(event, target_id)
+        if target_role == "admin":
+            admin_mult = float(config.get("mute_admin_multiplier", 5.0))
+            total_cost = max(1, int(total_cost * admin_mult))
 
         # 管理员免消耗
         if MessageHelper.is_admin(event) and config.get("admin_bypass_cost", False):
@@ -230,6 +252,16 @@ class MuteService:
         minutes = math.ceil(duration_sec / 60)
         total_cost = max(1, int(minutes * cost_per_min * discount))
 
+        # 权限前置检查：检查机器人是否具备禁言管理权限以及自闭者是否可被禁言
+        can_mute, perm_err = await MuteEngine.check_mute_permission(
+            event, target_id=sender_id, config=config
+        )
+        if not can_mute:
+            yield MessageHelper.reply(
+                event, f"无法开启自闭静心模式喵：\n{perm_err}", config
+            )
+            return
+
         sender_pts = await self.repo.get_user_points(
             sender_id, group_id=group_id, config=config
         )
@@ -285,6 +317,16 @@ class MuteService:
         target_id, _ = MuteEngine.extract_target_and_params(event)
         if not target_id:
             target_id = sender_id
+
+        # 权限前置检查：检查机器人是否具备解禁管理权限
+        can_unmute, perm_err = await MuteEngine.check_mute_permission(
+            event, target_id=target_id, config=config
+        )
+        if not can_unmute:
+            yield MessageHelper.reply(
+                event, f"无法解除禁言喵：\n{perm_err}", config
+            )
+            return
 
         cost = int(config.get("unmute_cost", 50))
         sender_pts = await self.repo.get_user_points(

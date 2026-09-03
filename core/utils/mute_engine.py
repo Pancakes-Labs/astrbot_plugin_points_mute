@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import time
+from typing import Any
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
@@ -11,6 +13,274 @@ from astrbot.api.message_components import At, Plain
 
 class MuteEngine:
     """跨平台禁言操作执行器。"""
+
+    _role_cache: dict[tuple[str, str], tuple[str, float]] = {}
+    _ROLE_CACHE_TTL: float = 30.0  # 角色缓存 TTL (秒)
+
+    @classmethod
+    def clear_role_cache(
+        cls, group_id: str | None = None, user_id: str | None = None
+    ) -> None:
+        """清理群成员角色缓存。"""
+        if group_id and user_id:
+            cls._role_cache.pop((str(group_id), str(user_id)), None)
+        elif group_id:
+            keys_to_del = [k for k in cls._role_cache if k[0] == str(group_id)]
+            for k in keys_to_del:
+                cls._role_cache.pop(k, None)
+        else:
+            cls._role_cache.clear()
+
+    @classmethod
+    async def get_member_role(
+        cls,
+        event: AstrMessageEvent,
+        user_id: str | int,
+        use_cache: bool = True,
+    ) -> str | None:
+        """获取指定群成员在群内的角色身份 ('owner', 'admin', 'member')。
+
+        若无法获取或不在群聊中，返回 None。
+        """
+        group_id = event.get_group_id()
+        if not group_id:
+            return None
+
+        gid_str = str(group_id).strip()
+        uid_str = str(user_id).strip()
+        if not gid_str or not uid_str:
+            return None
+
+        # 1. 查询角色缓存
+        now = time.time()
+        if use_cache and (gid_str, uid_str) in cls._role_cache:
+            cached_role, exp_time = cls._role_cache[(gid_str, uid_str)]
+            if now < exp_time:
+                return cached_role
+
+        # 2. 若查询的目标恰好是发送者，尝试从原始消息数据快速获取
+        try:
+            sender_id = str(event.get_sender_id() or "").strip()
+            if sender_id == uid_str:
+                if hasattr(event, "message_obj") and hasattr(
+                    event.message_obj, "raw_message"
+                ):
+                    raw = event.message_obj.raw_message
+                    if isinstance(raw, dict):
+                        sender_data = raw.get("sender")
+                        if isinstance(sender_data, dict):
+                            raw_role = sender_data.get("role")
+                            if raw_role in ("owner", "admin", "member"):
+                                r_val = str(raw_role).lower()
+                                if use_cache:
+                                    cls._role_cache[(gid_str, uid_str)] = (
+                                        r_val,
+                                        now + cls._ROLE_CACHE_TTL,
+                                    )
+                                return r_val
+        except Exception:
+            pass
+
+        # 3. OneBot v11 (aiocqhttp) 协议端接口查询
+        routing_params: dict[str, Any] = {}
+        if hasattr(event, "message_obj") and getattr(
+            event.message_obj, "self_id", None
+        ):
+            routing_params["self_id"] = event.message_obj.self_id
+
+        gid_param = int(gid_str) if gid_str.isdigit() else gid_str
+        uid_param = int(uid_str) if uid_str.isdigit() else uid_str
+
+        try:
+            if hasattr(event, "bot") and event.bot:
+                client = event.bot
+                info = None
+                if hasattr(client, "call_action"):
+                    info = await client.call_action(
+                        "get_group_member_info",
+                        group_id=gid_param,
+                        user_id=uid_param,
+                        no_cache=True,
+                        **routing_params,
+                    )
+                elif hasattr(client, "get_group_member_info"):
+                    info = await client.get_group_member_info(
+                        group_id=gid_param,
+                        user_id=uid_param,
+                        no_cache=True,
+                        **routing_params,
+                    )
+                elif hasattr(client, "api") and hasattr(client.api, "call_action"):
+                    info = await client.api.call_action(
+                        "get_group_member_info",
+                        group_id=gid_param,
+                        user_id=uid_param,
+                        no_cache=True,
+                        **routing_params,
+                    )
+
+                if isinstance(info, dict) and "role" in info:
+                    role_val = str(info["role"]).lower().strip()
+                    if role_val in ("owner", "admin", "member"):
+                        if use_cache:
+                            cls._role_cache[(gid_str, uid_str)] = (
+                                role_val,
+                                now + cls._ROLE_CACHE_TTL,
+                            )
+                        return role_val
+        except Exception as e:
+            logger.debug(
+                f"[积分禁言] OneBot 查询群成员 {uid_str} 角色信息受阻: {e}"
+            )
+
+        # 4. event.get_group 兜底查询
+        try:
+            if hasattr(event, "get_group"):
+                group = await event.get_group()
+                if group:
+                    if (
+                        getattr(group, "group_owner", None)
+                        and str(group.group_owner).strip() == uid_str
+                    ):
+                        role_val = "owner"
+                    else:
+                        admins = [
+                            str(a).strip()
+                            for a in (getattr(group, "group_admins", []) or [])
+                        ]
+                        if uid_str in admins:
+                            role_val = "admin"
+                        else:
+                            role_val = "member"
+
+                    if use_cache:
+                        cls._role_cache[(gid_str, uid_str)] = (
+                            role_val,
+                            now + cls._ROLE_CACHE_TTL,
+                        )
+                    return role_val
+        except Exception as e:
+            logger.debug(f"[积分禁言] event.get_group 兜底查询群成员角色受阻: {e}")
+
+        # 5. Satori 协议端适配查询
+        try:
+            if hasattr(event, "adapter") and hasattr(event.adapter, "client"):
+                satori_client = event.adapter.client
+                if hasattr(satori_client, "guild_member_get"):
+                    m_info = await satori_client.guild_member_get(
+                        guild_id=gid_str, user_id=uid_str
+                    )
+                    roles = getattr(m_info, "roles", []) or []
+                    role_names = [str(r).lower() for r in roles]
+                    if "owner" in role_names:
+                        role_val = "owner"
+                    elif "admin" in role_names or "administrator" in role_names:
+                        role_val = "admin"
+                    else:
+                        role_val = "member"
+
+                    if use_cache:
+                        cls._role_cache[(gid_str, uid_str)] = (
+                            role_val,
+                            now + cls._ROLE_CACHE_TTL,
+                        )
+                    return role_val
+        except Exception as e:
+            logger.debug(f"[积分禁言] Satori 查询群成员角色受阻: {e}")
+
+        return None
+
+    @classmethod
+    async def get_bot_role(
+        cls,
+        event: AstrMessageEvent,
+        use_cache: bool = True,
+    ) -> str | None:
+        """获取机器人自身在当前群聊中的角色身份 ('owner', 'admin', 'member')。"""
+        bot_ids = cls.get_bot_ids(event)
+        if hasattr(event, "get_self_id"):
+            try:
+                sid = event.get_self_id()
+                if sid:
+                    bot_ids.add(str(sid).strip())
+            except Exception:
+                pass
+
+        if not bot_ids:
+            return None
+
+        found_roles: set[str] = set()
+        for bid in bot_ids:
+            r = await cls.get_member_role(event, bid, use_cache=use_cache)
+            if r:
+                found_roles.add(r)
+
+        if "owner" in found_roles:
+            return "owner"
+        if "admin" in found_roles:
+            return "admin"
+        if "member" in found_roles:
+            return "member"
+        return None
+
+    @classmethod
+    async def check_mute_permission(
+        cls,
+        event: AstrMessageEvent,
+        target_id: str | int | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> tuple[bool, str]:
+        """检查机器人是否有权限执行禁言/解禁操作。
+
+        Returns:
+            (allowed: bool, reason: str) - 若允许禁言则返回 (True, "")；若无权限则返回 (False, 错误提示)。
+        """
+        group_id = event.get_group_id()
+        if not group_id:
+            return False, "只能在群聊中执行禁言操作喵~"
+
+        cfg = config or {}
+        # 是否开启了禁言权限检查（默认开启）
+        if not cfg.get("mute_check_permission", True):
+            return True, ""
+
+        # 1. 检查机器人自身在群里的禁言管理权限
+        bot_role = await cls.get_bot_role(event)
+        if bot_role == "member":
+            return (
+                False,
+                "本喵在群里还不是管理员哦，没有施加禁言的魔法权限喵~ 快给本喵上个管理吧！",
+            )
+
+        # 2. 如果指定了禁言目标，检查对该目标的禁言权限
+        if target_id is not None:
+            target_str = str(target_id).strip()
+            target_role = await cls.get_member_role(event, target_str)
+
+            # 群主拥有绝对豁免权
+            if target_role == "owner":
+                return (
+                    False,
+                    "群主拥有神圣不可侵犯的豁免权，本喵无法对群主施加禁言封印哦喵~",
+                )
+
+            # 目标是群管理员
+            if target_role == "admin":
+                # 是否允许禁言管理员配置开关
+                if not cfg.get("mute_admin_allowed", False):
+                    return (
+                        False,
+                        "目标是尊贵的群管理员，本喵无法对其施加禁言封印喵~",
+                    )
+
+                # 即使配置允许禁言管理员，但在 QQ 协议体系中，管理员无法禁言其他同级管理员，只有群主才能禁言管理员
+                if bot_role != "owner":
+                    return (
+                        False,
+                        "本喵只是群管理员不是群主，无法对同为管理者的群友施加封印喵~",
+                    )
+
+        return True, ""
 
     @staticmethod
     def parse_time_to_seconds(text: str) -> int | None:
@@ -264,14 +534,22 @@ class MuteEngine:
 
         return "禁言执行受阻（机器人可能权限不足或协议端未开放此接口）喵~"
 
-    @staticmethod
+    @classmethod
     async def execute_mute(
-        event: AstrMessageEvent, target_id: str, duration_sec: int
+        cls, event: AstrMessageEvent, target_id: str, duration_sec: int
     ) -> tuple[bool, str]:
         """跨平台执行群成员禁言。"""
         group_id = event.get_group_id()
         if not group_id:
             return False, "只能在群聊中执行禁言操作喵~"
+
+        # 前置权限检查
+        can_mute, perm_err = await cls.check_mute_permission(event, target_id)
+        if not can_mute:
+            return False, perm_err
+
+        gid_param = int(group_id) if str(group_id).isdigit() else group_id
+        uid_param = int(target_id) if str(target_id).isdigit() else target_id
 
         # 1. OneBot v11 (aiocqhttp) 适配器
         try:
@@ -279,8 +557,8 @@ class MuteEngine:
                 client = event.bot
                 if hasattr(client, "set_group_ban"):
                     await client.set_group_ban(
-                        group_id=int(group_id),
-                        user_id=int(target_id),
+                        group_id=gid_param,
+                        user_id=uid_param,
                         duration=duration_sec,
                     )
                     return True, "OneBot set_group_ban 执行成功"
@@ -288,8 +566,8 @@ class MuteEngine:
                 if hasattr(client, "call_action"):
                     await client.call_action(
                         "set_group_ban",
-                        group_id=int(group_id),
-                        user_id=int(target_id),
+                        group_id=gid_param,
+                        user_id=uid_param,
                         duration=duration_sec,
                     )
                     return True, "OneBot call_action 执行成功"
@@ -297,8 +575,8 @@ class MuteEngine:
                 if hasattr(client, "api") and hasattr(client.api, "call_action"):
                     await client.api.call_action(
                         "set_group_ban",
-                        group_id=int(group_id),
-                        user_id=int(target_id),
+                        group_id=gid_param,
+                        user_id=uid_param,
                         duration=duration_sec,
                     )
                     return True, "OneBot api.call_action 执行成功"
@@ -323,9 +601,9 @@ class MuteEngine:
 
         return False, "当前聊天平台或协议端不支持禁言接口喵~"
 
-    @staticmethod
+    @classmethod
     async def execute_unmute(
-        event: AstrMessageEvent, target_id: str
+        cls, event: AstrMessageEvent, target_id: str
     ) -> tuple[bool, str]:
         """解除指定群成员的禁言（duration=0）。"""
-        return await MuteEngine.execute_mute(event, target_id, 0)
+        return await cls.execute_mute(event, target_id, 0)
